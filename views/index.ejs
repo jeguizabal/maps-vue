@@ -1,0 +1,152 @@
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<body>
+        <div id="root">
+            </br>
+            <div class="row">
+                <div class="form-group">
+                <div class="col-sm-1">
+                    <h4>Filter:</h4>
+                </div>
+                <div class="col-sm-3">
+                    <select class="form-control" v-model="selected">
+                        <option v-for="option in options" v-bind:value="option.value">
+                        <span v-cloak>{{ option.text }}</span>
+                        </option>
+                    </select>
+                </div>
+                <div class="col-sm-8"></div>
+                </div>
+            </div>
+            </br>
+          <gmap-map :center="center" :zoom="5" style="width: 100%; height: 500px">
+            <gmap-info-window :options="infoOptions" :position="infoWindowPos" :opened="infoWinOpen" @closeclick="infoWinOpen=false">
+                <b>Next Reservation:</b> {{infoDate}}
+            </br>
+                <b>Address:</b>{{infoContent}}
+            </br>
+                <a v-bind:href="'http://www.google.com'"> {{infoLink}} </a>
+            </gmap-info-window>
+      
+            <gmap-marker :key="i" v-for="(m,i) in filteredMarks" :position="m.position" :label="m.days" :icon="m.icon" :clickable="true" @click="toggleInfoWindow(m,i)"></gmap-marker>
+          </gmap-map>
+        </div>
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.2.1/vue.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
+        <script src="https://xkjyeah.github.io/vue-google-maps/vue-google-maps.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/vue-resource@1.3.4"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.min.js"></script>
+      
+        <script>
+          Vue.use(VueGoogleMaps, {
+            load: {
+              key: 'AIzaSyB1dpYuQgvLk8Nlu9fKLIABlUuquIUtCwM'
+            },
+          });
+      
+          document.addEventListener('DOMContentLoaded', function() {
+            new Vue({
+              el: '#root',
+              data: {
+                center: {
+                  lat: 40.376332,
+                  lng: -98.547511
+                },
+                infoContent: '',
+                infoDate: '',
+                infoLink: '',
+                infoWindowPos: {
+                  lat: 0,
+                  lng: 0
+                },
+                infoWinOpen: false,
+                currentMidx: null,
+                //optional: offset infowindow so it visually sits nicely on top of our marker
+                infoOptions: {
+                  pixelOffset: {
+                    width: 0,
+                    height: -35
+                  }
+                },
+                marks: [],
+                selected: 'None',
+                options: [
+                { text: 'None', value: 'None' },
+                { text: 'Vacant', value: 'Vacant' },
+                { text: 'Not Ready', value: 'Not Ready' },
+                { text: 'Occupied', value: 'Occupied' }
+                ]
+              },
+              methods: {
+                toggleInfoWindow: function(marker, idx) {
+      
+                  this.infoWindowPos = marker.position;
+                  this.infoContent = marker.infoText;
+                  this.infoDate = marker.daysForNext;
+                  this.infoLink = marker.link;
+      
+                  //check if its the same marker that was selected if yes toggle
+                  if (this.currentMidx == idx) {
+                    this.infoWinOpen = !this.infoWinOpen;
+                  }
+                  //if different marker set infowindow to open and reset current marker index
+                  else {
+                    this.infoWinOpen = true;
+                    this.currentMidx = idx;
+      
+                  }
+                }
+      
+              },
+              created: function () {
+                    this.$http.get('https://api.rentlever.com/rentals/state?token=c0663781fe2380cddc6ee0c64e10b98c')
+                    .then(response => {
+                        var parsedMarks = response.data.map(function(marker){
+                            var icon = '', link = '';
+                            const nextDate = moment(new Date());
+                            nextDate.add(marker.nextReservation, 'days');
+                            var formatedDate = nextDate.format("dddd, MMMM Do YYYY");
+                            if (marker.status === 'Not Ready'){     
+                                link = 'click me';
+                                if (marker.nextReservation < 2){
+                                    icon = {url:'/assets/img/redIcon.png'};
+                                    formatedDate = 'Unknown'
+                                } 
+                                else {
+                                    icon = {url:'/assets/img/lightRedIcon.png'};
+                                }
+                            }
+                            if (marker.status === 'Occupied'){
+                                icon = {url:'/assets/img/blueIcon.png'};
+                            }
+                            if (marker.status === 'Vacant'){
+                                icon = {url:'/assets/img/greenIcon.png'};
+                            }
+
+                            return {position: {lat: marker.latitude, lng: marker.longitude}, 
+                                    infoText: marker.address, 
+                                    days: ''+marker.nextReservation, 
+                                    icon: icon,
+                                    status: marker.status,
+                                    daysForNext: formatedDate,
+                                    link: link
+                                    }
+                        })
+                        //console.log(parsedMarks);
+                        this.marks = parsedMarks;
+                    });
+              },
+              computed: {
+                    filteredMarks() {
+                    return this.marks.filter(item => {
+                        return (item.status === this.selected) || (this.selected === 'None');
+                    })
+                    }
+                }
+            });
+          });
+        </script>
+      
+      </body>

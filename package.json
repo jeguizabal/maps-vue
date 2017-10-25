@@ -1,0 +1,19 @@
+{
+  "name": "maps-poc",
+  "version": "1.0.0",
+  "description": "POC using Vuejs for visualizing markers on a map",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jose Maza",
+  "license": "ISC",
+  "engines": {
+    "node": "6.11.0"
+  },
+  "dependencies": {
+    "express": "^4.14.1",
+    "ejs": "^2.5.6"
+  }
+}
